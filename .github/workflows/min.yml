@@ -13,6 +13,7 @@ jobs:
     - name: Enable RDP
       shell: powershell
       run: |
+
         Set-ItemProperty `
         -Path "HKLM:\System\CurrentControlSet\Control\Terminal Server" `
         -Name "fDenyTSConnections" `
@@ -20,41 +21,14 @@ jobs:
 
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 
+        Restart-Service TermService -Force
+
         Write-Host "RDP Enabled"
 
 
-    - name: Create User
+    - name: Remove Extra Apps And Cleanup
       shell: powershell
       run: |
-
-        $password = ConvertTo-SecureString "Cloud@2026" -AsPlainText -Force
-
-        if (-not (Get-LocalUser -Name "clouduser" -ErrorAction SilentlyContinue)) {
-
-          New-LocalUser `
-          -Name "clouduser" `
-          -Password $password `
-          -PasswordNeverExpires `
-          -AccountNeverExpires
-
-        }
-
-        Add-LocalGroupMember `
-        -Group "Administrators" `
-        -Member "clouduser" `
-        -ErrorAction SilentlyContinue
-
-        Add-LocalGroupMember `
-        -Group "Remote Desktop Users" `
-        -Member "clouduser" `
-        -ErrorAction SilentlyContinue
-
-        Write-Host "User Ready"
-
-
-        - name: Remove Extra Apps
-          shell: powershell
-          run: |
 
         Write-Host "Removing extra apps..."
 
@@ -83,24 +57,66 @@ jobs:
           "*Zune*"
         )
 
+
         foreach ($app in $apps) {
-            Get-AppxPackage -AllUsers $app |
-            Remove-AppxPackage -ErrorAction SilentlyContinue
+
+          Get-AppxPackage -AllUsers $app |
+          Remove-AppxPackage -ErrorAction SilentlyContinue
+
         }
 
 
-        # حذف فولدرهای اضافی
-        $folders = @(
-          "C:\Program Files\WindowsApps",
-          "C:\Program Files (x86)\Microsoft"
-        )
+        Remove-Item "C:\Windows\Temp\*" `
+        -Recurse `
+        -Force `
+        -ErrorAction SilentlyContinue
 
-        Write-Host "Cleaning temporary files..."
 
-        Remove-Item "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
-        Remove-Item "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item "$env:TEMP\*" `
+        -Recurse `
+        -Force `
+        -ErrorAction SilentlyContinue
 
-        Write-Host "Cleanup finished"
+
+        Write-Host "Cleanup Done"
+
+
+    - name: Create User
+      shell: powershell
+      run: |
+
+        $password = ConvertTo-SecureString `
+        "Cloud@2026" `
+        -AsPlainText `
+        -Force
+
+
+        if (-not (Get-LocalUser -Name "clouduser" -ErrorAction SilentlyContinue)) {
+
+          New-LocalUser `
+          -Name "clouduser" `
+          -Password $password `
+          -PasswordNeverExpires `
+          -AccountNeverExpires
+
+        }
+
+
+        Add-LocalGroupMember `
+        -Group "Administrators" `
+        -Member "clouduser" `
+        -ErrorAction SilentlyContinue
+
+
+        Add-LocalGroupMember `
+        -Group "Remote Desktop Users" `
+        -Member "clouduser" `
+        -ErrorAction SilentlyContinue
+
+
+        Write-Host "User Ready"
+
+
     - name: Install Chrome
       shell: powershell
       run: |
@@ -109,12 +125,15 @@ jobs:
         "https://dl.google.com/chrome/install/latest/chrome_installer.exe" `
         -OutFile "C:\chrome.exe"
 
+
         Start-Process `
         "C:\chrome.exe" `
         -ArgumentList "/silent /install" `
         -Wait
 
+
         Remove-Item "C:\chrome.exe" -Force
+
 
         Write-Host "Chrome Installed"
 
@@ -130,6 +149,7 @@ jobs:
         "https://pkgs.tailscale.com/stable/tailscale-setup-latest-amd64.msi" `
         -OutFile "C:\tailscale.msi"
 
+
         Start-Process `
         msiexec.exe `
         -ArgumentList "/i C:\tailscale.msi /quiet /norestart" `
@@ -138,9 +158,13 @@ jobs:
 
         $ts="C:\Program Files\Tailscale\tailscale.exe"
 
+
         & $ts up `
         --authkey="$env:TAILSCALE_AUTHKEY" `
         --hostname="cloud-browser"
+
+
+        Write-Host "Tailscale Connected"
 
 
     - name: Show Login Info
@@ -149,7 +173,9 @@ jobs:
 
         Start-Sleep -Seconds 5
 
+
         $ip = & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+
 
         Write-Host "=============================="
         Write-Host "SERVER READY"
