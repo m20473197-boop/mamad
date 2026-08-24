@@ -190,66 +190,7 @@ jobs:
             Write-Host "      - IP not already held by another machine (a conflicting one will 400)?" -ForegroundColor Red
           }
 
-      #  GeForce NOW. The client always installs into
-      #  %LOCALAPPDATA%\NVIDIA Corporation\GeForceNOW (no /D switch), so
-      #  we junction that folder onto D:\Persist -> install + settings +
-      #  login state all live on D: and get backed up automatically.
-      # ---------------------------------------------------------------
-      - name: "6. Install GeForce NOW on D: (persistent)"
-        shell: powershell
-        run: |
-          $ProgressPreference = 'SilentlyContinue'
-          $gfnData = "$env:PERSIST_DIR\GFN"                       # real folder on D:
-          $localNv = "$env:LOCALAPPDATA\NVIDIA Corporation"       # where GFN insists on living
-          New-Item -ItemType Directory -Force -Path $gfnData | Out-Null
-          # Point the profile folder at D: via a directory junction
-          if (Test-Path $localNv) {
-            $item = Get-Item $localNv -Force
-            if (-not ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
-              robocopy $localNv $gfnData /E /MOVE /NFL /NDL /NJH /NJS /NC /NS | Out-Null
-              Remove-Item $localNv -Recurse -Force -ErrorAction SilentlyContinue
-            }
-          }
-          if (-not (Test-Path $localNv)) { cmd /c mklink /J "$localNv" "$gfnData" | Out-Null }
-          # Same junction for anyone who logs in later (e.g. CynetAdmin)
-          $cmd = 'powershell -NoProfile -WindowStyle Hidden -Command "$t=Join-Path $env:LOCALAPPDATA ''NVIDIA Corporation''; if(-not (Test-Path $t)){ cmd /c mklink /J \"$t\" \"' + $gfnData + '\" }"'
-          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run' -Name 'LinkGFNToD' -Value $cmd -Force
-          $installed = Test-Path "$gfnData\GeForceNOW\CEF\GeForceNOW.exe"
-          if ($installed) {
-            Write-Host ">>> GeForce NOW restored from previous session - skipping download." -ForegroundColor Green
-          } else {
-            Write-Host ">>> Downloading GeForce NOW client ..." -ForegroundColor Cyan
-            $exe = "D:\GeForceNOW-release.exe"
-            curl.exe -L --retry 3 --retry-delay 2 -o $exe "https://download.nvidia.com/gfnpc/GeForceNOW-release.exe"
-            Write-Host ">>> Installing silently (-s -noreboot -nofinish) ..." -ForegroundColor Cyan
-            $p = Start-Process $exe -ArgumentList "-s -noreboot -nofinish -noeula" -Wait -PassThru -ErrorAction SilentlyContinue
-            Write-Host "    installer exit code: $($p.ExitCode)"
-            Remove-Item $exe -Force -ErrorAction SilentlyContinue
-          }
-          # Desktop shortcut for the RDP session
-          $target = Get-ChildItem "$gfnData" -Filter "GeForceNOW.exe" -Recurse -ErrorAction SilentlyContinue |
-                    Select-Object -First 1
-          if ($target) {
-            $ws = New-Object -ComObject WScript.Shell
-            foreach ($d in @("$env:PUBLIC\Desktop", "$env:USERPROFILE\Desktop")) {
-              if (Test-Path $d) {
-                $sc = $ws.CreateShortcut("$d\GeForce NOW.lnk")
-                $sc.TargetPath = $target.FullName
-                $sc.WorkingDirectory = $target.DirectoryName
-                $sc.Save()
-              }
-            }
-            Write-Host ">>> GeForce NOW ready: $($target.FullName)" -ForegroundColor Green
-          } else {
-            Write-Host ">>> WARN: GeForceNOW.exe not found after install." -ForegroundColor Yellow
-          }
-          # Reality check on the GPU situation
-          $gpu = (Get-CimInstance Win32_VideoController | Select-Object -Expand Name) -join ', '
-          Write-Host "  Display adapter: $gpu" -ForegroundColor Yellow
-          if ($gpu -notmatch 'NVIDIA|AMD|Intel') {
-            Write-Host "  WARN: no real GPU on this runner - GFN may refuse to stream (VM/unsupported GPU)." -ForegroundColor Red
-          }
-      # ---------------------------------------------------------------
+
       #  Keep alive + rolling snapshot of D:\Persist. Snapshotting during
       #  the session means that even if the job is cancelled/timed out,
       #  the final save step only has to upload an already-built archive.
