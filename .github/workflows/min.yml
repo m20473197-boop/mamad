@@ -52,6 +52,55 @@ jobs:
         Write-Host "User Ready"
 
 
+        - name: Remove Extra Apps
+          shell: powershell
+          run: |
+
+        Write-Host "Removing extra apps..."
+
+        $apps = @(
+          "*3DViewer*",
+          "*Bing*",
+          "*Clipchamp*",
+          "*Cortana*",
+          "*GetHelp*",
+          "*Getstarted*",
+          "*MicrosoftSolitaireCollection*",
+          "*MixedReality*",
+          "*OfficeHub*",
+          "*OneNote*",
+          "*People*",
+          "*PowerAutomate*",
+          "*Skype*",
+          "*Teams*",
+          "*Todos*",
+          "*WindowsAlarms*",
+          "*WindowsCamera*",
+          "*WindowsMaps*",
+          "*WindowsSoundRecorder*",
+          "*Xbox*",
+          "*YourPhone*",
+          "*Zune*"
+        )
+
+        foreach ($app in $apps) {
+            Get-AppxPackage -AllUsers $app |
+            Remove-AppxPackage -ErrorAction SilentlyContinue
+        }
+
+
+        # حذف فولدرهای اضافی
+        $folders = @(
+          "C:\Program Files\WindowsApps",
+          "C:\Program Files (x86)\Microsoft"
+        )
+
+        Write-Host "Cleaning temporary files..."
+
+        Remove-Item "C:\Windows\Temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item "$env:TEMP\*" -Recurse -Force -ErrorAction SilentlyContinue
+
+        Write-Host "Cleanup finished"
     - name: Install Chrome
       shell: powershell
       run: |
