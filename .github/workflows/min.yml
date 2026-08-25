@@ -117,26 +117,6 @@ jobs:
         Write-Host "User Ready"
 
 
-    - name: Install Chrome
-      shell: powershell
-      run: |
-
-        Invoke-WebRequest `
-        "https://dl.google.com/chrome/install/latest/chrome_installer.exe" `
-        -OutFile "C:\chrome.exe"
-
-
-        Start-Process `
-        "C:\chrome.exe" `
-        -ArgumentList "/silent /install" `
-        -Wait
-
-
-        Remove-Item "C:\chrome.exe" -Force
-
-
-        Write-Host "Chrome Installed"
-
 
     - name: Install Tailscale
       shell: powershell
