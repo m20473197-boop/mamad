@@ -57,7 +57,6 @@ jobs:
           "*Zune*"
         )
 
-
         foreach ($app in $apps) {
 
           Get-AppxPackage -AllUsers $app |
@@ -79,6 +78,7 @@ jobs:
 
 
         Write-Host "Cleanup Done"
+
 
 
     - name: Create User
@@ -147,6 +147,7 @@ jobs:
         Write-Host "Tailscale Connected"
 
 
+
     - name: Show Login Info
       shell: powershell
       run: |
@@ -163,6 +164,35 @@ jobs:
         Write-Host "USERNAME: clouduser"
         Write-Host "PASSWORD: Cloud@2026"
         Write-Host "=============================="
+
+
+
+    - name: Generate VLESS Config Test
+      shell: powershell
+      run: |
+
+        Write-Host ""
+        Write-Host "=============================="
+        Write-Host "GENERATED CONFIG"
+        Write-Host "=============================="
+
+        $uuid = [guid]::NewGuid().ToString()
+
+        $ip = & "C:\Program Files\Tailscale\tailscale.exe" ip -4
+
+
+        $config = "vless://$uuid@$ip`:443?type=tcp&security=reality&encryption=none&fp=chrome&sni=www.microsoft.com&pbk=TEST_PUBLIC_KEY&sid=TEST_SHORT_ID#GitHub-Cloud"
+
+
+        Write-Host $config
+
+
+        Write-Host ""
+        Write-Host "UUID:"
+        Write-Host $uuid
+
+        Write-Host "=============================="
+
 
 
     - name: Keep Alive
